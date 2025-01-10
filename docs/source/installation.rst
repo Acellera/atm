@@ -1,6 +1,8 @@
 Installation
 ============
 
+You can install the Acellera-ATM package via conda.
+
 .. code-block:: bash
     :linenos:
 

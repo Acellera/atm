@@ -18,6 +18,11 @@ conda activate atm     # Activate the environment
 conda install acellera-atm python=3.10 -c acellera -c conda-forge # Install the package
 ```
 
+## Usage
+
+To use the Acellera-ATM package, you can either use it from command line or from python.
+You can follow the tutorial [here](https://github.com/Acellera/quantumbind_rbfe) to get started.
+
 ### Citations
 
 - [Relative Binding Free Energy Calculations for Ligands with Diverse Scaffolds with the Alchemical Transfer Method](https://pubs.acs.org/doi/10.1021/acs.jcim.1c01129)
