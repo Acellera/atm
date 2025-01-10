@@ -1,0 +1,2 @@
+include atm/logging.ini
+recursive-include atm/apps/ manifest.json

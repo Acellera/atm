@@ -1,0 +1,39 @@
+package:
+  name: acellera-atm
+  version:
+
+source:
+  path: ../..
+
+build:
+  noarch: python
+  script:
+    - pip install . -vv
+
+  python:
+    entry_points:
+      - rbfe_structprep = atm.rbfe_structprep:main
+      - rbfe_explicit_sync = atm.rbfe_explicit_sync:main
+
+requirements:
+  host:
+    - pip
+    - python
+    - versioneer==0.29
+    - setuptools
+  run:
+
+tests:
+  - python:
+      imports:
+        - atm
+      pip_check: true
+
+about:
+  homepage: https://software.acellera.com/atm/
+  license: LGPL-3.0
+  summary: Acellera AToM - Relative Binding Free Energy (RBFE) Calculations.
+
+extra:
+  recipe-maintainers:
+    - stefdoerr
