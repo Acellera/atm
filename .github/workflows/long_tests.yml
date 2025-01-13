@@ -11,6 +11,8 @@ jobs:
 
     strategy:
       fail-fast: false
+      matrix:
+        jobname: ["QB_A08_A07", "QB_A15_A14", "QB_A16_A06"]
 
     defaults: # Needed for conda
       run:
@@ -52,4 +54,4 @@ jobs:
 
       - name: Test
         run: |
-          pytest ./tests_long -s
+          pytest ./tests_long -s -k ${{ matrix.jobname }}
