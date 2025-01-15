@@ -6,6 +6,7 @@ on:
 
 jobs:
   test:
+    timeout-minutes: 7200
     runs-on: [self-hosted, Linux, X64]
 
     strategy:
