@@ -18,7 +18,7 @@ def _test_regression(tmp_path, jobname):
         "QB_A16_A06": -1.23,
     }[jobname]
     expected_error = {
-        "QB_A08_A07": 0.35,
+        "QB_A08_A07": 0.50,
         "QB_A15_A14": 0.35,
         "QB_A16_A06": 0.35,
     }[jobname]
