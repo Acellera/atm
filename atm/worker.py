@@ -123,7 +123,7 @@ class OMMWorkerATM:
     def get_posvel(self):
         self.logger.debug("ommworker.get_posvel")
         state = self.context.getState(getPositions=True, getVelocities=True)
-        return state.getPositions(), state.getVelocities()
+        return state.getPositions(asNumpy=True), state.getVelocities(asNumpy=True)
 
     def run(self, replica):
         assert replica.worker is self

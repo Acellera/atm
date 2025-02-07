@@ -2,6 +2,7 @@ import os
 import copy
 import openmm.app as app
 from openmm.unit import kelvin, kilojoules_per_mole, kilocalories_per_mole
+from openmm import unit
 
 
 class OMMReplica(object):
@@ -23,8 +24,10 @@ class OMMReplica(object):
         self.outfile = None
 
         state = self.context.getState(getPositions=True, getVelocities=True)
-        self.positions = state.getPositions()
-        self.velocities = state.getVelocities()
+        self.positions = state.getPositions(asNumpy=True).value_in_unit(unit.nanometer)
+        self.velocities = state.getVelocities(asNumpy=True).value_in_unit(
+            unit.nanometer / unit.picosecond
+        )
 
         if not os.path.isdir("r%d" % self._id):
             os.mkdir("r%d" % self._id)
@@ -37,7 +40,6 @@ class OMMReplica(object):
     def set_state(self, stateid, par):
         self.stateid = int(stateid)
         self.par = copy.deepcopy(par)
-        self.update_context_from_state()
 
     def get_state(self):
         return (self.stateid, self.par)
@@ -49,8 +51,8 @@ class OMMReplica(object):
         self.pot = copy.deepcopy(pot)
 
     def set_posvel(self, positions, velocities):
-        self.positions = copy.deepcopy(positions)
-        self.velocities = copy.deepcopy(velocities)
+        self.positions[:] = positions
+        self.velocities[:] = velocities
 
     def open_out(self):
         outfilename = "r%d/%s.out" % (self._id, self.basename)
@@ -215,8 +217,8 @@ class OMMReplicaATM(OMMReplica):
             * kilojoules_per_mole
         )
         state = self.context.getState(getPositions=True, getVelocities=True)
-        self.positions = state.getPositions()
-        self.velocities = state.getVelocities()
+        self.positions = state.getPositions(asNumpy=True)
+        self.velocities = state.getVelocities(asNumpy=True)
 
     def update_context_from_state(self):
         self.context.setParameter(self.ommsystem.parameter["cycle"], self.cycle)
