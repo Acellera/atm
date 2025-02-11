@@ -299,18 +299,19 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
     # Add beta column
     data["bet"] = 1.0 / (0.001986209 * data["temperature"])
 
-    # Filter data for leg1
-    mask = data["stateid"] <= leg1istate
+    # Calculate time masks
+    timemask = np.ones(len(data), dtype=bool)
     if mintimeid is not None:
-        mask = mask & (data["timeid"] >= mintimeid)
+        timemask = timemask & (data["timeid"] >= mintimeid)
     if maxtimeid is not None:
-        mask = mask & (data["timeid"] <= maxtimeid)
-
-    data1 = data[mask]
+        timemask = timemask & (data["timeid"] <= maxtimeid)
 
     # Calculate samples
-    nsamples = len(data1)
+    nsamples = len(data[timemask])
     samplesperreplica = nsamples // nstates
+
+    # Filter data for leg1
+    data1 = data[timemask & (data["stateid"] <= leg1istate)]
 
     mtempt = len(bet)
     leg1stateids = np.arange(leg1istate + 1)
@@ -362,13 +363,7 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
     ddgbind1 = np.sqrt(ve[:, -1] + ve[:, 0]) / bet
 
     # Filter data for leg 2
-    mask = data["stateid"] >= leg2istate
-    if mintimeid is not None:
-        mask = mask & (data["timeid"] >= mintimeid)
-    if maxtimeid is not None:
-        mask = mask & (data["timeid"] <= maxtimeid)
-
-    data1 = data[mask]
+    data1 = data[timemask & (data["stateid"] >= leg2istate)]
 
     # Create reversed sequence for leg2 states
     leg2stateids = np.arange(leg2istate, nstates)[::-1]
@@ -423,11 +418,7 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
     dgb = dgbind1 - dgbind2
     ddgb = np.sqrt(ddgbind2 * ddgbind2 + ddgbind1 * ddgbind1)
 
-    maxsamples = samplesperreplica
-    if maxtimeid is not None:
-        maxsamples = min(maxtimeid, samplesperreplica)
-
-    return dgb[0], ddgb[0], dgbind1[0], dgbind2[0], maxsamples
+    return dgb[0], ddgb[0], dgbind1[0], dgbind2[0], samplesperreplica
 
 
 # if __name__ == "__main__":
