@@ -299,10 +299,6 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
     # Add beta column
     data["bet"] = 1.0 / (0.001986209 * data["temperature"])
 
-    # Calculate samples
-    nsamples = len(data)
-    samplesperreplica = nsamples // nstates
-
     # Filter data for leg1
     mask = data["stateid"] <= leg1istate
     if mintimeid is not None:
@@ -311,6 +307,10 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
         mask = mask & (data["timeid"] <= maxtimeid)
 
     data1 = data[mask]
+
+    # Calculate samples
+    nsamples = len(data1)
+    samplesperreplica = nsamples // nstates
 
     mtempt = len(bet)
     leg1stateids = np.arange(leg1istate + 1)
