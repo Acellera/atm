@@ -239,7 +239,18 @@ def uwham_r(label, logQ, ufactormax, ufactormin=1):
     return out
 
 
-def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
+def calculate_uwham(
+    rundir,
+    jobname,
+    mintimeid=None,
+    maxtimeid=None,
+    intermd=None,
+    lambda1=None,
+    lambda2=None,
+    alpha=None,
+    u0=None,
+    w0=None,
+):
     import pandas as pd
     import os
 
@@ -248,18 +259,24 @@ def calculate_uwham(rundir, jobname, mintimeid=None, maxtimeid=None):
     bet = 1.0 / (0.001986209 * tempt)
     # fmt: off
     # directn = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-    intermd = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    lambda1 = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50,
-                        0.40, 0.30, 0.20, 0.10, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00])
-    lambda2 = np.array([0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50,
-                        0.50, 0.50, 0.50, 0.50, 0.50, 0.40, 0.30, 0.20, 0.10, 0.00])
-    alpha = np.full(22, 0.10)
-    u0 = np.full(22, 110.0)
-    w0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    if intermd is None:
+        intermd = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    nstates = len(intermd)
+    if lambda1 is None:
+        lambda1 = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50,
+                            0.40, 0.30, 0.20, 0.10, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00])
+    if lambda2 is None:
+        lambda2 = np.array([0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50,
+                            0.50, 0.50, 0.50, 0.50, 0.50, 0.40, 0.30, 0.20, 0.10, 0.00])
+    if alpha is None:
+        alpha = np.full(nstates, 0.10)
+    if u0 is None:
+        u0 = np.full(nstates, 110.0)
+    if w0 is None:
+        w0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     # fmt: on
 
     # Calculate states
-    nstates = len(lambda1)
     # np.where returns a tuple, we want the first element, then take the first occurrence
     leg1istate = np.where(intermd == 1)[0][0]
     leg2istate = np.where(intermd == 1)[0][1]
