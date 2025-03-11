@@ -24,13 +24,8 @@ where = [""]
 include = ["atm*"]
 namespaces = false
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "atm/_version.py"
-versionfile_build = "atm/_version.py"
-tag_prefix = ""
-parentdir_prefix = "atm-"
+[tool.setuptools_scm]
+
 
 [tool.pytest.ini_options]
 python_files = "*.py"
@@ -39,5 +34,5 @@ python_functions = "_test*"
 testpaths = ["tests"]
 
 [build-system]
-requires = ["setuptools", "toml", "versioneer[toml]==0.28"]
+requires = ["setuptools", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"

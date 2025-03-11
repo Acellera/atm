@@ -1,8 +1,12 @@
 import os
 import logging.config
-from atm import _version
+from importlib.metadata import version, PackageNotFoundError
 
-__version__ = _version.get_versions()["version"]
+try:
+    __version__ = version("func2argparse")
+except PackageNotFoundError:
+    pass
+
 
 dirname = os.path.dirname(__file__)
 try:
