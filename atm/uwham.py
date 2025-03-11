@@ -261,19 +261,31 @@ def calculate_uwham(
     # directn = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
     if intermd is None:
         intermd = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    else:
+        intermd = np.array(intermd)
     nstates = len(intermd)
     if lambda1 is None:
         lambda1 = np.array([0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50,
                             0.40, 0.30, 0.20, 0.10, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00])
+    else:
+        lambda1 = np.array(lambda1)
     if lambda2 is None:
         lambda2 = np.array([0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50,
                             0.50, 0.50, 0.50, 0.50, 0.50, 0.40, 0.30, 0.20, 0.10, 0.00])
+    else:
+        lambda2 = np.array(lambda2)
     if alpha is None:
         alpha = np.full(nstates, 0.10)
+    else:
+        alpha = np.array(alpha)
     if u0 is None:
         u0 = np.full(nstates, 110.0)
+    else:
+        u0 = np.array(u0)
     if w0 is None:
         w0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    else:
+        w0 = np.array(w0)
     # fmt: on
 
     # Calculate states
