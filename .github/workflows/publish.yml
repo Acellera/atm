@@ -40,7 +40,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }}
-          pip install versioneer==0.29
+          pip install setuptools_scm
 
       - name: Build conda 📦
         shell: bash -l {0}

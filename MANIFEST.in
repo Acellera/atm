@@ -1,2 +1,3 @@
 include atm/logging.ini
 recursive-include atm/apps/ manifest.json
+prune tests tests_long docs
