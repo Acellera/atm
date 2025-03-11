@@ -7,8 +7,6 @@ source:
 
 build:
   noarch: python
-  script:
-    - pip install . -vv
 
   python:
     entry_points:
