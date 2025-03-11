@@ -4,3 +4,4 @@ pyyaml
 numpy
 cuda-version=11.8
 torchmd-net
+pandas
