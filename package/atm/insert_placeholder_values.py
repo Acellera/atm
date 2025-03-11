@@ -1,11 +1,9 @@
-import traceback
-import versioneer
+import setuptools_scm
 import yaml
 
 try:
-    __version__ = versioneer.get_version()
+    __version__ = setuptools_scm.get_version()
 except Exception:
-    print(traceback.format_exc())
     print("Could not get version. Defaulting to version 0")
     __version__ = "0"
 

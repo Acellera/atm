@@ -17,7 +17,8 @@ requirements:
   host:
     - pip
     - python
-    - versioneer==0.29
+    - python-build
+    - setuptools-scm>=8
     - setuptools
   run:
 
