@@ -73,24 +73,37 @@ class OMMReplica(object):
         self.worker.simulation.saveState(ckptfile)
 
     def open_dcd(self):
-        dcdfilename = "r%d/%s.dcd" % (self._id, self.basename)
-        append = os.path.isfile(dcdfilename)
+        xtc = self.worker.config.get("XTC_TRAJECTORY", False)
+        if xtc:
+            filename = "r%d/%s.xtc" % (self._id, self.basename)
+        else:
+            filename = "r%d/%s.dcd" % (self._id, self.basename)
+        append = os.path.isfile(filename)
         if append:
             mode = "r+b"
         else:
             mode = "wb"
-        self.dcdfile = open(dcdfilename, mode)
-        self.dcd = app.DCDFile(
-            self.dcdfile, self.worker.topology, self.ommsystem.MDstepsize, append=append
-        )
-        self.dcdfile.flush()  # Force the writing of the DCD header
+
+        if xtc:
+            self.traj = app.XTCFile(
+                filename, self.worker.topology, self.ommsystem.MDstepsize, append=append
+            )
+        else:
+            dcdfile = open(filename, mode)
+            self.traj = app.DCDFile(
+                dcdfile,
+                self.worker.topology,
+                self.ommsystem.MDstepsize,
+                append=append,
+            )
+            dcdfile.flush()  # Force the writing of the DCD header
 
     def save_dcd(self):
         # TODO
         # boxsize options works only for NVT because the boxsize of the service worker
         # is not updated from the compute worker
         boxsize = self.worker.simulation.context.getState().getPeriodicBoxVectors()
-        self.dcd.writeModel(self.positions, periodicBoxVectors=boxsize)
+        self.traj.writeModel(self.positions, periodicBoxVectors=boxsize)
 
     def set_mdsteps(self, mdsteps):
         self.mdsteps = mdsteps
