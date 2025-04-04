@@ -116,22 +116,33 @@ class OpenmmJobAmberRBFE:
                 self._updateReplicas()
 
     def scheduleJobs(self):
-        with Timer(self.logger.info, "ATM simulations"):
+        import os
 
+        with Timer(self.logger.info, "ATM simulations"):
             last_sample = self.replicas[0].get_cycle()
-            num_samples = str(self.config["MAX_SAMPLES"])
-            if num_samples.startswith("+"):
-                num_extra_samples = int(num_samples[1:])
-                num_samples = num_extra_samples + last_sample - 1
-                self.logger.info(f"Additional number of samples: {num_extra_samples}")
-            else:
-                num_samples = int(num_samples)
-                self.logger.info(f"Target number of samples: {num_samples}")
+            num_samples = self.config["MAX_SAMPLES"]
+
+            write_progress = False
+            if isinstance(num_samples, str) and num_samples.startswith("+"):
+                # Handle cases where we want to increase the number of samples from a starting checkpoint
+                write_progress = True
+                num_samples = int(num_samples[1:])
+                if not os.path.isfile("starting_sample"):
+                    with open("starting_sample", "w") as f:
+                        f.write(f"{last_sample}\n")
+                with open("starting_sample", "r") as f:
+                    starting_sample = int(f.read().strip())
+                    last_sample = (last_sample - starting_sample) + 1
+
+            self.logger.info(f"Target number of samples: {num_samples}")
 
             # in memory storage for output data
             output_data = [[] for _ in range(len(self.replicas))]
 
             for isample in range(last_sample, num_samples + 1):
+                if write_progress:
+                    with open("progress", "w") as f:
+                        f.write(f"{(isample - 1) / num_samples}\n")
 
                 with Timer(self.logger.info, f"sample {isample}"):
 
@@ -192,12 +203,6 @@ class OpenmmJobAmberRBFE:
                             with Timer(self.logger.info, "checkpointing"):
                                 for replica in self.replicas:
                                     replica.save_checkpoint()
-
-                    # Report progress on GPUGRID
-                    progress = float(isample - last_sample + 1) / float(
-                        num_samples - last_sample + 1
-                    )
-                    open("progress", "w").write(str(progress))
 
     def _updateReplicas(self):
         for replica, stateid in zip(self.replicas, self.replica_states):

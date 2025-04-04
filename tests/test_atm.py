@@ -39,23 +39,53 @@ def _test_production_xtc(tmp_path):
         os.path.join(tmp_path, "QB_A08_A07_completed"),
     )
 
-    with open(
-        os.path.join(tmp_path, "QB_A08_A07_completed", "QB_A08_A07_asyncre.yaml"), "r"
-    ) as f:
-        lines = yaml.safe_load(f)
-    lines["XTC_TRAJECTORY"] = True
-    with open(
-        os.path.join(tmp_path, "QB_A08_A07_completed", "QB_A08_A07_asyncre.yaml"), "w"
-    ) as f:
-        yaml.dump(lines, f)
-
-    rbfe_production(
-        os.path.join(tmp_path, "QB_A08_A07_completed", "QB_A08_A07_asyncre.yaml")
+    configfile = os.path.join(
+        tmp_path, "QB_A08_A07_completed", "QB_A08_A07_asyncre.yaml"
     )
+    with open(configfile, "r") as f:
+        config = yaml.safe_load(f)
+    config["XTC_TRAJECTORY"] = True
+    with open(configfile, "w") as f:
+        yaml.dump(config, f)
+
+    rbfe_production(configfile)
     for i in range(4):
         assert os.path.exists(
             os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.xtc")
         )
+
+
+def _test_production_incremental(tmp_path):
+    from atm.rbfe_production import rbfe_production
+    import yaml
+
+    shutil.copytree(
+        os.path.join(curr_dir, "QB_A08_A07_completed"),
+        os.path.join(tmp_path, "QB_A08_A07_completed"),
+    )
+
+    configfile = os.path.join(
+        tmp_path, "QB_A08_A07_completed", "QB_A08_A07_asyncre.yaml"
+    )
+    with open(configfile, "r") as f:
+        config = yaml.safe_load(f)
+    config["MAX_SAMPLES"] = "+2"
+    with open(configfile, "w") as f:
+        yaml.dump(config, f)
+
+    rbfe_production(configfile)
+    for i in range(4):
+        assert os.path.exists(
+            os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
+        )
+    with open(
+        os.path.join(tmp_path, "QB_A08_A07_completed", "starting_sample"), "r"
+    ) as f:
+        starting_sample = int(f.read().strip())
+        assert starting_sample == 1
+    with open(os.path.join(tmp_path, "QB_A08_A07_completed", "progress"), "r") as f:
+        progress = float(f.read().strip())
+        assert progress == 0.5
 
 
 def _test_uwham_analysis(tmp_path):
