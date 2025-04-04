@@ -122,8 +122,10 @@ class OpenmmJobAmberRBFE:
             last_sample = self.replicas[0].get_cycle()
             num_samples = self.config["MAX_SAMPLES"]
 
+            write_progress = False
             if isinstance(num_samples, str) and num_samples.startswith("+"):
                 # Handle cases where we want to increase the number of samples from a starting checkpoint
+                write_progress = True
                 num_samples = int(num_samples[1:])
                 if not os.path.isfile("starting_sample"):
                     with open("starting_sample", "w") as f:
@@ -138,6 +140,9 @@ class OpenmmJobAmberRBFE:
             output_data = [[] for _ in range(len(self.replicas))]
 
             for isample in range(last_sample, num_samples + 1):
+                if write_progress:
+                    with open("progress", "w") as f:
+                        f.write(f"{(isample - 1) / num_samples}\n")
 
                 with Timer(self.logger.info, f"sample {isample}"):
 
