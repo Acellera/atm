@@ -204,12 +204,6 @@ class OpenmmJobAmberRBFE:
                                 for replica in self.replicas:
                                     replica.save_checkpoint()
 
-                    # Report progress on GPUGRID
-                    progress = float(isample - last_sample + 1) / float(
-                        num_samples - last_sample + 1
-                    )
-                    open("progress", "w").write(str(progress))
-
     def _updateReplicas(self):
         for replica, stateid in zip(self.replicas, self.replica_states):
             replica.set_state(stateid, self.state_params[stateid])
