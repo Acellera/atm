@@ -5,6 +5,17 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+def _read_dcd_header(file):
+    import struct
+
+    with open(file, "r+b") as f:
+        f.seek(8, os.SEEK_SET)
+        numFrames = struct.unpack("<i", f.read(4))[0]
+        f.seek(20, os.SEEK_SET)
+        currStep = struct.unpack("<i", f.read(4))[0]
+        return numFrames, currStep
+
+
 def _test_structprep(tmp_path):
     from atm.rbfe_structprep import rbfe_structprep
 
@@ -57,7 +68,6 @@ def _test_production_xtc(tmp_path):
 
 def _test_production_incremental(tmp_path):
     from atm.rbfe_production import rbfe_production
-    from moleculekit.molecule import Molecule
     import yaml
 
     shutil.copytree(
@@ -76,8 +86,9 @@ def _test_production_incremental(tmp_path):
 
     rbfe_production(configfile)
     for i in range(4):
-        dcd = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
-        assert Molecule(dcd).numFrames == 1
+        dcdf = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
+        numFrames, _ = _read_dcd_header(dcdf)
+        assert numFrames == 1
 
     startsampl_file = os.path.join(tmp_path, "QB_A08_A07_completed", "starting_sample")
     with open(startsampl_file, "r") as f:
@@ -96,8 +107,9 @@ def _test_production_incremental(tmp_path):
         yaml.dump(config, f)
     rbfe_production(configfile)
     for i in range(4):
-        dcd = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
-        assert Molecule(dcd).numFrames == 2
+        dcdf = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
+        numFrames, _ = _read_dcd_header(dcdf)
+        assert numFrames == 2
 
     with open(startsampl_file, "r") as f:
         starting_sample = int(f.read().strip())
