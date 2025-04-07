@@ -57,6 +57,7 @@ def _test_production_xtc(tmp_path):
 
 def _test_production_incremental(tmp_path):
     from atm.rbfe_production import rbfe_production
+    from moleculekit.molecule import Molecule
     import yaml
 
     shutil.copytree(
@@ -69,21 +70,39 @@ def _test_production_incremental(tmp_path):
     )
     with open(configfile, "r") as f:
         config = yaml.safe_load(f)
-    config["MAX_SAMPLES"] = "+2"
+    config["MAX_SAMPLES"] = "+1"
     with open(configfile, "w") as f:
         yaml.dump(config, f)
 
     rbfe_production(configfile)
     for i in range(4):
-        assert os.path.exists(
-            os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
-        )
-    with open(
-        os.path.join(tmp_path, "QB_A08_A07_completed", "starting_sample"), "r"
-    ) as f:
+        dcd = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
+        assert Molecule(dcd).numFrames == 1
+
+    startsampl_file = os.path.join(tmp_path, "QB_A08_A07_completed", "starting_sample")
+    with open(startsampl_file, "r") as f:
         starting_sample = int(f.read().strip())
         assert starting_sample == 1
-    with open(os.path.join(tmp_path, "QB_A08_A07_completed", "progress"), "r") as f:
+    prog_file = os.path.join(tmp_path, "QB_A08_A07_completed", "progress")
+    with open(prog_file, "r") as f:
+        progress = float(f.read().strip())
+        assert progress == 0.0
+
+    # Run another 2 samples
+    os.remove(startsampl_file)
+    os.remove(prog_file)
+    config["MAX_SAMPLES"] = "+2"
+    with open(configfile, "w") as f:
+        yaml.dump(config, f)
+    rbfe_production(configfile)
+    for i in range(4):
+        dcd = os.path.join(tmp_path, "QB_A08_A07_completed", f"r{i}", "QB_A08_A07.dcd")
+        assert Molecule(dcd).numFrames == 2
+
+    with open(startsampl_file, "r") as f:
+        starting_sample = int(f.read().strip())
+        assert starting_sample == 2
+    with open(prog_file, "r") as f:
         progress = float(f.read().strip())
         assert progress == 0.5
 

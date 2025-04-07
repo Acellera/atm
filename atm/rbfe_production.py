@@ -123,6 +123,7 @@ class OpenmmJobAmberRBFE:
             num_samples = self.config["MAX_SAMPLES"]
 
             write_progress = False
+            starting_sample = 0
             if isinstance(num_samples, str) and num_samples.startswith("+"):
                 # Handle cases where we want to increase the number of samples from a starting checkpoint
                 write_progress = True
@@ -150,7 +151,8 @@ class OpenmmJobAmberRBFE:
                         with Timer(
                             self.logger.info, f"sample {isample}, replica {irepl}"
                         ):
-                            assert replica.get_cycle() == isample
+                            if starting_sample == 0:
+                                assert replica.get_cycle() == isample
                             self.worker.run(replica)
 
                     with Timer(self.logger.info, "exchange replicas"):
