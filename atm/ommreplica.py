@@ -61,14 +61,14 @@ class OMMReplica(object):
             self.logger.warning("unable to open outfile %s" % outfilename)
 
     def load_checkpoint(self):
-        ckptfile = "r%d/%s_ckpt.xml" % (self._id, self.basename)
+        ckptfile = "r%d/checkpoint.xml" % (self._id)
         if os.path.isfile(ckptfile):
             self.logger.info("Loading checkpointfile %s" % ckptfile)
             self.worker.simulation.loadState(ckptfile)
             self.update_state_from_context()
 
     def save_checkpoint(self):
-        ckptfile = "r%d/%s_ckpt.xml" % (self._id, self.basename)
+        ckptfile = "r%d/checkpoint.xml" % (self._id)
         self.update_context_from_state()
         self.worker.simulation.saveState(ckptfile)
 
