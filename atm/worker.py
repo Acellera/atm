@@ -85,14 +85,47 @@ class OMMWorkerATM:
         self.context.setPositions(positions)
         self.context.setVelocities(velocities)
 
+    def _perturbation_u0_u1(self):
+        # get the perturbation energies u1, u0 without ATMForce.getPerturbationEnergy(),
+        # which hangs on the CUDA platform when a PythonForce (our NNP) is wrapped in the
+        # ATMForce: getPerturbationEnergy() re-evaluates the wrapped forces without
+        # releasing the GIL, so the python force callback deadlocks. getState() does
+        # release the GIL, so instead we read u0 and u1 off the ATMForce energy expression
+        #   select(step(Direction),u0,u1) + ((L2-L1)/Alpha)*log(...) + L2*usc + W0
+        # with Lambda1=Lambda2=0 and W0=0 only the leading select() is left: it is u0 for
+        # Direction>0 and u1 for Direction<0 (Alpha=1 just avoids a 0/0 in the now
+        # zero-weighted middle term). the sampling state is restored before returning.
+        atm = self.ommsystem.atmforce
+        ctx = self.context
+        grp = {self.ommsystem.atmforcegroup}
+        names = [atm.Lambda1(), atm.Lambda2(), atm.Alpha(), atm.Uh(), atm.W0(), atm.Direction()]
+        saved = {n: ctx.getParameter(n) for n in names}
+        try:
+            ctx.setParameter(atm.Lambda1(), 0.0)
+            ctx.setParameter(atm.Lambda2(), 0.0)
+            ctx.setParameter(atm.Alpha(), 1.0)
+            ctx.setParameter(atm.Uh(), 0.0)
+            ctx.setParameter(atm.W0(), 0.0)
+            ctx.setParameter(atm.Direction(), 1.0)
+            u0 = ctx.getState(getEnergy=True, groups=grp).getPotentialEnergy()
+            ctx.setParameter(atm.Direction(), -1.0)
+            u1 = ctx.getState(getEnergy=True, groups=grp).getPotentialEnergy()
+        finally:
+            for n, v in saved.items():   # restore the sampling state
+                ctx.setParameter(n, v)
+        return u1, u0
+
     def get_energy(self, par):
         self.logger.debug("ommworker.get_energy")
         fgroups = {0, self.ommsystem.atmforcegroup}
         state = self.context.getState(getEnergy=True, groups=fgroups)
         pot = {}
         pot["potential_energy"] = state.getPotentialEnergy()
-
-        (u1, u0, _) = self.ommsystem.atmforce.getPerturbationEnergy(self.context)
+        if self.ommsystem.nnpforcegroup is not None:
+            # PythonForce wrapped in ATMForce -> getPerturbationEnergy hangs on CUDA
+            (u1, u0) = self._perturbation_u0_u1()
+        else:
+            (u1, u0, _) = self.ommsystem.atmforce.getPerturbationEnergy(self.context)
         umcore = (
             self.context.getParameter(self.ommsystem.atmforce.Umax())
             * kilojoules_per_mole

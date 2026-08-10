@@ -1,5 +1,6 @@
 import sys
 import copy
+import numpy as np
 import openmm as mm
 import openmm.app as app
 from openmm.unit import (
@@ -15,6 +16,7 @@ from openmm.unit import (
     amu,
     nanometer,
     femtosecond,
+    elementary_charge,
 )
 from openmm.vec3 import Vec3
 from atm.atomutils import AtomUtils
@@ -50,6 +52,7 @@ class OMMSystem(object):
 
         self.atmforcegroup = None
         self.nonbondedforcegroup = None
+        self.nnpforcegroup = None
         self.metaDforcegroup = None
 
         self.frictionCoeff = float(self.keywords.get("FRICTION_COEFF")) / picosecond
@@ -117,28 +120,63 @@ class OMMSystemAmber(OMMSystem):
                 group_indices.append(atom_indices)
 
             self.logger.info(f"NNP model: {nnp_model}")
-            nnp = None
+            # Embedding scheme: "mechanical" (default, NNP models only the ligand
+            # internal energy) or "electrostatic"/"electrostatic_only" (the NNP
+            # additionally sees the MM environment charges; requires a charge-
+            # predicting model, e.g. the AceFF-resp checkpoint).
+            embedding = self.keywords.get("MLIP_EMBEDDING", "mechanical")
+            if embedding not in ("mechanical", "electrostatic"):
+                self._exit(f"MLIP_EMBEDDING must be 'mechanical' or 'electrostatic', got '{embedding}'")
+            self.logger.info(f"MLIP embedding: {embedding}")
+
+            all_atom_indices = group_indices[0] + group_indices[1]
+            # per-ML-atom ligand assignment (batch) and per-ligand total charge
+            batch = [0] * len(group_indices[0]) + [1] * len(group_indices[1])
+            nb = [f for f in self.system.getForces() if isinstance(f, mm.NonbondedForce)][0]
+            group_charges = [
+                int(round(sum(
+                    nb.getParticleParameters(i)[0].value_in_unit(elementary_charge) for i in g
+                )))
+                for g in group_indices
+            ]
+
+            # Original FF charges + PME screening parameter, gathered here (before the
+            # mechanical mixed-system surgery) and passed to the electrostatic embedding.
+            all_charges = pme_alpha = None
+            if embedding == "electrostatic":
+                all_charges = [
+                    nb.getParticleParameters(i)[0].value_in_unit(elementary_charge)
+                    for i in range(self.system.getNumParticles())
+                ]
+                tol = nb.getEwaldErrorTolerance()
+                alpha_ewald = (1.0 / nb.getCutoffDistance()) * np.sqrt(-np.log(2.0 * tol))
+                pme_alpha = float(alpha_ewald.value_in_unit(angstrom ** -1))
+                self.logger.info(f"PME alpha (1/Angstrom): {pme_alpha}")
+
             if nnp_model.startswith("TorchMD-NET"):
-                from atm import atom_nnp_wrapper
+                from atm import atom_nnp_wrapper  # registers the "TorchMD-NET" potential
 
                 nnp_file = self.keywords["NNP_FILE"]
                 self.logger.info(f"NNP file: {nnp_file}")
-                max_num_neighbors = self.keywords["NNP_MAX_NUM_NEIGHBORS"]
-                self.logger.info(f"NNP max num neighbors: {max_num_neighbors}")
-                nnp = MLPotential(
-                    nnp_model,
-                    model_file=nnp_file,
-                    group_indices=group_indices,
+                max_num_neighbors = int(self.keywords.get("NNP_MAX_NUM_NEIGHBORS", 64))
+
+                nnp = MLPotential("TorchMD-NET", modelPath=nnp_file)
+                self.system = nnp.createMixedSystem(
+                    self.topology, self.system, all_atom_indices,
+                    embedding="mechanical",   # MM-side surgery (unchanged); our term is additive
+                    mlEmbedding=embedding,     # "mechanical" or "electrostatic"
+                    mlLongRange=False,
+                    charge=group_charges, batch=batch,
                     max_num_neighbors=max_num_neighbors,
-                    use_cuda_graphs=True,
+                    all_charges=all_charges, pme_alpha=pme_alpha,
+                    epsilon=float(self.keywords.get("EPSILON", 2.0)),  # induction dielectric screening
+                    removeConstraints=True,
                 )
             else:
                 nnp = MLPotential(nnp_model)
-
-            all_atom_indices = group_indices[0] + group_indices[1]
-            self.system = nnp.createMixedSystem(
-                self.topology, self.system, all_atom_indices, removeConstraints=False
-            )
+                self.system = nnp.createMixedSystem(
+                    self.topology, self.system, all_atom_indices, removeConstraints=True
+                )
 
     def set_barostat(self, temperature, pressure, frequency):
         """
@@ -612,21 +650,25 @@ class OMMSystemAmberRBFE(OMMSystemAmber):
             direction,
         )
 
-        # adds nonbonded Force from the system to the ATMForce
+        # Add the NonbondedForce AND the NNP (torchmd-net) PythonForce to the ATMForce,
+        # so both are evaluated at the two displaced ligand positions and alchemically
+        # mixed. The originals are kept in the system (issue #4395: removing them breaks
+        # atom reordering) but moved to a spare force group; the Langevin integrator only
+        # integrates {0, metaD, atmforce}, so the originals are not double-counted.
         import re
 
         nbpattern = re.compile(".*Nonbonded.*")
+        pfpattern = re.compile(".*PythonForce.*")
         for i in range(self.system.getNumForces()):
-            if nbpattern.match(str(type(self.system.getForce(i)))):
+            ftype = str(type(self.system.getForce(i)))
+            if nbpattern.match(ftype):
                 self.atmforce.addForce(copy.copy(self.system.getForce(i)))
-
-                # https://github.com/openmm/openmm/issues/4395
-                # rather then removing the nonbonded force, disable it by assigning a force
-                # group not included in the MTS integrator. This way it can do atom reordering.
-                # self.system.removeForce(i)
                 self.nonbondedforcegroup = self.free_force_group()
                 self.system.getForce(i).setForceGroup(self.nonbondedforcegroup)
-                break
+            elif pfpattern.match(ftype):
+                self.atmforce.addForce(copy.copy(self.system.getForce(i)))
+                self.nnpforcegroup = self.free_force_group()
+                self.system.getForce(i).setForceGroup(self.nnpforcegroup)
 
         # adds atoms to ATMForce
         for i in range(self.topology.getNumAtoms()):

@@ -47,7 +47,8 @@ def weighted_choice(choices):
     import numpy as np
 
     """Return a discrete outcome given a set of outcome/weight pairs."""
-    r = np.random.random() * np.sum(w for c, w in list(choices))
+    choices = list(choices)
+    r = np.random.random() * sum(w for c, w in choices)   # python sum: numpy>=2 rejects sum(generator)
     for c, w in choices:
         r -= w
         if r < 0:
