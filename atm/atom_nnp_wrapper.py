@@ -260,6 +260,10 @@ class TorchMDNetPotentialImpl(MLPotentialImpl):
         use_coulomb_cutoff = args.get('useCoulombCutoff', periodic)
         model = load_model(
             model_file_path,
+            # RESP model architecture in stock torchmd-net (this repo's tensornet2_resp).
+            # The aceff-resp checkpoint stores model="tensornet2"; override so it loads
+            # into the RESP architecture. Configurable for other model files.
+            model = args.get('nnp_model_arch', 'tensornet2_resp'),
             derivative=False,
             remove_ref_energy = args.get('remove_ref_energy', True),
             max_num_neighbors = min(args.get('max_num_neighbors', 64), numbers.shape[0]),
